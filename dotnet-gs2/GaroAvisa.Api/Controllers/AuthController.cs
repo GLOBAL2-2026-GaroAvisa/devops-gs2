@@ -1,0 +1,110 @@
+using GaroAvisa.Api.Extensions;
+using GaroAvisa.Application.DTOs;
+using GaroAvisa.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
+
+namespace GaroAvisa.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
+    {
+        private readonly IUsuarioService _service;
+
+        public AuthController(IUsuarioService service)
+        {
+            _service = service;
+        }
+
+        /// <summary>Cria uma conta de usuário e já devolve o token de acesso.</summary>
+        /// <response code="201">Conta criada.</response>
+        /// <response code="400">Dados inválidos.</response>
+        /// <response code="409">E-mail já cadastrado.</response>
+        /// <response code="429">Muitas tentativas em pouco tempo.</response>
+        [HttpPost("cadastro")]
+        [AllowAnonymous]
+        [EnableRateLimiting(RateLimitingExtensions.PoliticaAutenticacao)]
+        [ProducesResponseType(typeof(LoginRespostaDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+        public async Task<IActionResult> Cadastrar([FromBody] CadastroUsuarioDto dto)
+        {
+            try
+            {
+                var resposta = await _service.CadastrarAsync(dto);
+                return CreatedAtAction(nameof(Me), null, resposta);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { mensagem = ex.Message });
+            }
+        }
+
+        /// <summary>Faz login com e-mail e senha e devolve o token JWT.</summary>
+        /// <response code="200">Login realizado.</response>
+        /// <response code="400">Dados inválidos.</response>
+        /// <response code="401">E-mail ou senha incorretos. Confira os dados e tente novamente.</response>
+        /// <response code="429">Muitas tentativas em pouco tempo.</response>
+        [HttpPost("login")]
+        [AllowAnonymous]
+        [EnableRateLimiting(RateLimitingExtensions.PoliticaAutenticacao)]
+        [ProducesResponseType(typeof(LoginRespostaDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        {
+            var resposta = await _service.LoginAsync(dto);
+            return resposta is null
+                ? Unauthorized(new { mensagem = "E-mail ou senha incorretos. Confira os dados e tente novamente." })
+                : Ok(resposta);
+        }
+
+        /// <summary>Mostra os dados do usuário que está logado.</summary>
+        /// <response code="200">Dados do usuário.</response>
+        /// <response code="401">Token ausente ou inválido.</response>
+        [HttpGet("me")]
+        [Authorize]
+        [ProducesResponseType(typeof(UsuarioRespostaDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> Me()
+        {
+            var usuarioId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var usuario = await _service.BuscarPorIdAsync(usuarioId);
+            return usuario is null ? Unauthorized() : Ok(usuario);
+        }
+
+        /// <summary>Exclui a conta do usuário logado e todos os dados dele.</summary>
+        /// <remarks>Apaga também os locais, alertas, compromissos e preferências do usuário. Não pode ser desfeito.</remarks>
+        /// <response code="200">Conta excluída.</response>
+        /// <response code="401">Token ausente ou inválido.</response>
+        /// <response code="403">Contas de administrador não podem ser excluídas.</response>
+        /// <response code="404">Conta não encontrada.</response>
+        [HttpDelete("me")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ExcluirConta()
+        {
+            var usuarioId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            try
+            {
+                var excluida = await _service.ExcluirContaAsync(usuarioId);
+                return excluida
+                    ? Ok(new { mensagem = "Conta excluída com sucesso. Todos os seus dados foram apagados." })
+                    : NotFound(new { mensagem = "Conta não encontrada. Ela pode já ter sido excluída." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { mensagem = ex.Message });
+            }
+        }
+    }
+}
