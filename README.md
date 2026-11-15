@@ -1,6 +1,6 @@
 # GaroAvisa — Global Solution 2026/2: DevOps Tools & Cloud Computing
 
-> API de alertas de tempo para a rotina do cidadão (tema **CitizenTech**).
+> API em .NET do **GaroAvisa**, solução CitizenTech da Global Solution 2026/2.
 > Aplicação **.NET 10 (ASP.NET Core Web API)** com banco **Oracle em nuvem**,
 > entregue por uma esteira de **CI/CD no Azure DevOps** que compila, testa e
 > publica automaticamente a API em um **Azure Web App** a cada Pull Request
@@ -38,10 +38,11 @@
 ## Índice
 
 - [Sobre o Projeto](#sobre-o-projeto)
-- [Benefícios para o Cidadão](#benefícios-para-o-cidadão)
+- [Benefícios para o Usuário](#benefícios-para-o-usuário)
 - [Descrição da Solução e Stack](#descrição-da-solução-e-stack)
 - [Arquitetura + Fluxo CI/CD](#arquitetura--fluxo-cicd)
 - [Estrutura do Repositório](#estrutura-do-repositório)
+- [Repositórios do Projeto](#repositórios-do-projeto)
 - [Banco de Dados em Nuvem](#banco-de-dados-em-nuvem)
 - [Projeto no Azure DevOps](#projeto-no-azure-devops)
 - [Políticas da Branch main](#políticas-da-branch-main)
@@ -53,24 +54,25 @@
 - [Testando o CRUD](#testando-o-crud)
 - [Segurança](#segurança)
 - [Limpeza dos recursos](#limpeza-dos-recursos)
-- [Equipe](#equipe)
+- [Integrantes](#integrantes)
 
 ---
 
 ## Sobre o Projeto
 
-Em cidades como São Paulo, chuvas fortes, ventos e mudanças bruscas de
-temperatura afetam diretamente a rotina das pessoas: alagamentos no caminho
-do trabalho, compromissos ao ar livre perdidos e falta de aviso com
-antecedência. A informação sobre o tempo existe, mas não chega ligada ao que
-cada pessoa vai fazer e aonde vai.
+**O problema.** O tempo interfere diretamente na rotina das pessoas: uma
+chuva forte no caminho do trabalho, uma onda de calor no dia de uma consulta,
+um temporal na hora de buscar os filhos na escola. As previsões costumam ser
+genéricas, para a cidade inteira, e mudam ao longo do dia. A pessoa precisa
+procurar a informação, interpretar números e códigos e lembrar de conferir de
+novo.
 
-O **GaroAvisa** resolve isso: o usuário cria uma conta, cadastra os **locais**
-que fazem parte do seu dia (Casa, Trabalho, Escola...) e os seus
-**compromissos** em cada local. A API consulta a previsão do tempo na
-**Open-Meteo** e gera **alertas** quando a previsão atinge as regras de risco
-(chuva forte, vento forte, calor, frio e tempestade), além de avisar quando a
-previsão muda de forma brusca.
+**A solução.** O **GaroAvisa** faz esse trabalho pelo usuário. Ele cadastra os
+**lugares** que fazem parte da rotina dele, salvos como **locais** com uma
+etiqueta (Casa, Trabalho, Escola), e os **compromissos** que tem pela frente.
+A API acompanha a previsão de cada um na **Open-Meteo**, explica o tempo em
+português e avisa quando existe risco (chuva forte, vento forte, calor, frio e
+tempestade) ou quando a previsão muda.
 
 **Nesta entrega**, o foco é a prática de **DevOps**: toda alteração no código
 segue o mesmo caminho, rastreável e automático, no **Azure DevOps**:
@@ -84,15 +86,17 @@ segue o mesmo caminho, rastreável e automático, no **Azure DevOps**:
 
 ---
 
-## Benefícios para o Cidadão
+## Benefícios para o Usuário
 
 | Benefício | Descrição |
 |---|---|
-| **Alerta no lugar certo** | Os avisos são gerados para os locais que a pessoa realmente frequenta, e não para a cidade inteira |
-| **Planejamento dos compromissos** | Cada compromisso mostra a previsão e os alertas do dia em que vai acontecer |
-| **Aviso de mudança brusca** | A API compara a previsão nova com a anterior e avisa quando o tempo muda muito |
-| **Regras configuráveis** | Os limites de chuva, vento, calor, frio e tempestade são regras cadastradas, ajustáveis sem mudar o código |
-| **Preferências do usuário** | Resumo diário, silêncio noturno e tipos de aviso podem ser ligados ou desligados |
+| **Alertas sobre os próprios locais** | Em vez de uma previsão genérica, o usuário recebe alertas sobre os lugares onde ele realmente vai estar |
+| **Previsão explicada** | Previsão de 1 a 7 dias de cada local, com o código do tempo traduzido para o português |
+| **Compromissos** | O usuário consulta a previsão e os alertas do dia de cada compromisso |
+| **Aviso de mudança na previsão** | A API guarda a última previsão de cada local e avisa quando ela muda de forma brusca |
+| **Resumo do dia** | Em uma só consulta, a previsão e os alertas de hoje de todos os locais do usuário |
+| **Preferências** | O usuário escolhe alertas do dia, avisos de mudança na previsão, avisos sobre compromissos, resumo diário e silêncio noturno |
+| **Regras de alerta** | O administrador define quando um alerta deve ser criado (tipo de risco, limite e gravidade), sem mudar o código |
 | **Dados públicos e gratuitos** | A previsão vem da Open-Meteo, sem custo de licença |
 | **Entrega contínua** | Correções e melhorias chegam à nuvem em minutos, com testes automáticos antes de cada deploy |
 
@@ -100,22 +104,23 @@ segue o mesmo caminho, rastreável e automático, no **Azure DevOps**:
 
 ## Descrição da Solução e Stack
 
-**O que a aplicação faz:** é uma API REST documentada no Swagger. Após o
-cadastro e o login (token **JWT**), o usuário gerencia seus **locais** e
-**compromissos** (CRUD), consulta a previsão e os alertas de cada local e
-ajusta suas preferências. Usuários com perfil **ADMIN** cadastram as regras
-de alerta e disparam a verificação dos alertas.
+**O que a API faz:** é uma API RESTful documentada no Swagger. Com a conta
+criada e o login feito (token **JWT**), o usuário busca **lugares** na
+Open-Meteo e os salva como **locais**, cadastra **compromissos**, consulta a
+**previsão**, os **alertas** e o **resumo do dia**, e ajusta as suas
+**preferências**. O perfil **ADMIN** cria as **regras de alerta** e dispara a
+**verificação de alertas**. Cada usuário só vê os próprios dados.
 
 | Camada | Tecnologia |
 |---|---|
 | Linguagem | C# |
 | Framework | .NET 10 — ASP.NET Core Web API (Controllers) |
-| Acesso a dados | Entity Framework Core (provider Oracle) |
-| Autenticação | JWT (Bearer) |
-| Documentação | Swagger (Swashbuckle) |
+| Acesso a dados | Entity Framework Core 10 + Oracle |
+| Autenticação | JWT Bearer (perfis USUARIO e ADMIN) |
+| Documentação | Swagger (Swashbuckle) e Scalar |
 | Banco de dados | Oracle Database (servidor da FIAP — banco em nuvem) |
-| Previsão do tempo | Open-Meteo (API pública) |
-| Testes | xUnit + Moq + `WebApplicationFactory` (banco em memória) |
+| Previsão do tempo | Open-Meteo (API pública), consumida com HttpClient |
+| Testes | xUnit, Moq e WebApplicationFactory |
 | Repositório | Azure Repos (importado do GitHub) |
 | Gestão do trabalho | Azure Boards (Scrum) |
 | CI/CD | Azure Pipelines (YAML, multi-stage: CI + CD) |
@@ -160,9 +165,22 @@ de alerta e disparam a verificação dos alertas.
 └── README.md
 ```
 
-A pasta `dotnet-gs2/` é uma cópia do repositório da API .NET da Global
-Solution ([GLOBAL2-2026-GaroAvisa/dotnet-gs2](https://github.com/GLOBAL2-2026-GaroAvisa/dotnet-gs2)).
 O projeto não utiliza containers, por isso não há pasta `dockerfiles`.
+
+### Repositórios do Projeto
+
+| Repositório | Conteúdo |
+|---|---|
+| [`dotnet-gs2`](https://github.com/GLOBAL2-2026-GaroAvisa/dotnet-gs2) | Repositório original da API .NET, entregue na disciplina **Advanced Business Development with .NET** |
+| [`devops-gs2`](https://github.com/GLOBAL2-2026-GaroAvisa/devops-gs2) | Este repositório, da disciplina **DevOps Tools & Cloud Computing**: cópia do código da API na pasta `dotnet-gs2/`, mais os scripts, o YAML da pipeline, o desenho da arquitetura e este README |
+
+> **Por que o código .NET foi copiado para este repositório?** Para não
+> alterar o repositório entregue na disciplina de .NET nem incluir nele
+> arquivos que não fazem parte daquela matéria (scripts de infraestrutura,
+> YAML da pipeline e documentação de DevOps), evitando confusão na correção.
+> A pasta `dotnet-gs2/` deste repositório parte do mesmo código do
+> repositório original, que pode ser conferido em
+> https://github.com/GLOBAL2-2026-GaroAvisa/dotnet-gs2.git
 
 ---
 
@@ -284,21 +302,14 @@ que dá permissão para a pipeline configurar e publicar no Web App.
 
 ## Testes Automatizados
 
-São **47 testes xUnit**, executados no stage CI e publicados na aba
-**Tests** da execução da pipeline. Os testes de integração sobem a API em
-memória, com um banco próprio para teste, então o CI não depende do Oracle.
+São **47 testes**, executados no stage CI e publicados na aba **Tests** da
+execução da pipeline. Os testes usam banco em memória e uma Open-Meteo falsa,
+então **não precisam** do Oracle nem de internet.
 
-| Projeto / Classe | O que valida |
+| Projeto | O que testa |
 |---|---|
-| `UsuarioServiceTests` | Cadastro com senha em hash, e-mail repetido, login e exclusão de conta |
-| `LocalServiceTests` | Etiqueta repetida e regra do local principal |
-| `LocaisControllerTests` | Respostas do controller de locais (sucesso e não encontrado) |
-| `AlertaServiceTests` | Criação de alertas sem duplicar, preferência desligada e escolha da regra mais grave |
-| `AvaliadorClimaTests` | Mudança brusca na previsão e tradução dos códigos do tempo |
-| `AuthIntegrationTests` | Cadastro, login, exclusão de conta e `401` sem token |
-| `LocaisIntegrationTests` | CRUD de locais e bloqueio de acesso aos dados de outro usuário |
-| `AlertasIntegrationTests` | Previsão, verificação de alertas, `403` para usuário comum e idempotência |
-| `RateLimitingIntegrationTests` | Limite de requisições (`429`) |
+| **GaroAvisa.UnitTests** | Regras de negócio com Moq: cadastro com senha em hash, e-mail repetido, login, exclusão de conta, etiqueta repetida, local principal, criação de alertas sem duplicar, preferência desligada, Open-Meteo fora do ar, escolha da regra mais grave, mudança brusca na previsão e tradução dos códigos do tempo |
+| **GaroAvisa.IntegrationTests** | Endpoints de verdade com `WebApplicationFactory` e banco em memória: cadastro, login, exclusão de conta, `401` sem token, `403` para usuário comum, CRUD de locais, acesso a dados de outro usuário, idempotência (replay e `422`), previsão, verificação de alertas, rate limiting (`429`) e health check |
 
 ---
 
@@ -509,7 +520,7 @@ Com a `main` protegida, toda alteração no código segue este caminho:
 > extensão Oracle SQL Developer), sempre com o mesmo `SELECT` de cada tabela.
 >
 > **Ordem:** o compromisso depende do local (`localId`), então o local é
-> criado primeiro. Na exclusão, o compromisso é apagado antes do local.
+> criado primeiro. Na exclusão, o compromisso é excluído antes do local.
 
 **SELECTs usados em todas as etapas**
 ```sql
@@ -527,7 +538,7 @@ SELECT ID, ID_LOCAL, NOME, DT_COMPROMISSO FROM T_GS_COMPROMISSO;
 | Depois do DELETE do compromisso | `T_GS_COMPROMISSO`: nenhuma linha |
 | Depois do DELETE do local | `T_GS_LOCAL`: nenhuma linha |
 
-### Login
+### Criar conta e fazer login
 
 **Criar conta** — `POST /api/Auth/cadastro`
 ```json
@@ -575,7 +586,7 @@ Copie o `token` da resposta, clique em **Authorize**, cole o token e confirme.
 }
 ```
 
-**DELETE** — `DELETE /api/Locais/{id}` (resposta `204`; apaga também os compromissos do local)
+**DELETE** — `DELETE /api/Locais/{id}` (resposta `204`; exclui também os compromissos do local)
 
 ### Tabela T_GS_COMPROMISSO — `/api/Compromissos`
 
@@ -605,13 +616,18 @@ Copie o `token` da resposta, clique em **Authorize**, cole o token e confirme.
 
 ## Segurança
 
-- **Autenticação e autorização:** as rotas de dados exigem token **JWT**.
-  Cada usuário só acessa os próprios locais, compromissos e alertas; rotas
-  administrativas exigem o perfil **ADMIN**.
-- **Senhas dos usuários:** armazenadas no banco como **hash**, nunca em texto puro.
-- **Rate limiting e idempotência:** a API limita a quantidade de requisições
-  por minuto (`429`) e evita registros duplicados com o cabeçalho
-  `Idempotency-Key`.
+- **Autenticação e autorização:** todos os endpoints, exceto cadastro,
+  login e health checks, exigem o token **JWT**. Sem token, a resposta é
+  `401`; usuário comum em rota de admin recebe `403`.
+- **Perfis de acesso:** toda conta é criada como **USUARIO**; o perfil
+  **ADMIN** cria as regras de alerta e dispara a verificação de alertas.
+  Cada usuário só enxerga os próprios dados: buscar o local ou o compromisso
+  de outra pessoa devolve `404`.
+- **Senha:** guardada protegida por **hash**, nunca em texto.
+- **Rate Limiting:** 100 requisições por minuto por usuário ou IP e 5 por
+  minuto no login e no cadastro, contra tentativas de adivinhar senha (`429`).
+- **Idempotência:** os endpoints que criam registros aceitam o cabeçalho
+  `Idempotency-Key`, para o mesmo pedido não criar registros duplicados.
 - **HTTPS:** a API é acessada pelo domínio `azurewebsites.net`, com HTTPS
   fornecido pelo Azure App Service.
 - **Credenciais fora do código:** a conexão com o Oracle e a chave do JWT
@@ -643,7 +659,7 @@ rm -rf devops-gs2
 
 ---
 
-## Equipe
+## Integrantes
 
 | RM | Nome | Turma |
 |---|---|---|
