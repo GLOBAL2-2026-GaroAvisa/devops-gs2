@@ -13,23 +13,28 @@
 
 ## Demonstração do CI/CD (vídeo)
 
-> O link do YouTube será incluído aqui após a gravação.
+[![Assista ao vídeo no YouTube](https://img.youtube.com/vi/6IagZFQjluk/hqdefault.jpg)](https://www.youtube.com/watch?v=6IagZFQjluk)
+
+▶️ **Assista no YouTube:** https://www.youtube.com/watch?v=6IagZFQjluk
+
+📁 **Cópia de segurança (OneDrive FIAP, acesso com conta FIAP):** [gs-garoavisa.mp4](https://fiapcom-my.sharepoint.com/:v:/g/personal/rm565698_fiap_com_br/IQCYHyVZxPoPRK_CWv3q9wBOAcIaW3216Q5dOmyrACJfOqE?e=7SxBoJ)
 
 <details>
 <summary>O que é mostrado no vídeo</summary>
 
-1. Organização e projeto no Azure DevOps: membros com acesso **Basic**, projeto privado, Scrum, professor como **Project Administrator**, service connection e políticas da branch `main`
-2. README: solução proposta, conceito de DevOps e desenho da arquitetura
-3. Scripts no repositório (`criar-infra-gs.sh` e `script-bd.sql`) e recursos criados no Portal da Azure
+1. Organização e projeto no Azure DevOps: membros com acesso **Basic**, projeto privado, Scrum, professor como **Project Administrator**, service connection, políticas da branch `main`, repositório, commits, pipeline e environment
+2. README no GitHub: solução proposta, conceito de DevOps e desenho da arquitetura
+3. Scripts no repositório (`criar-infra-gs.sh` e `script-bd.sql`), recursos criados no Portal da Azure e o Swagger **antes** da alteração (título `GaroAvisa.Api 1.0`)
 4. Configuração da pipeline: YAML (stages, jobs e tasks) e variáveis
 5. Nova tarefa no **Azure Boards**
 6. Nova **branch** a partir da tarefa e alteração no código-fonte (`Program.cs`), com commit vinculado à tarefa
-7. **Pull Request**, aprovação e **merge** na `main`
+7. **Pull Request** com as políticas, aprovação e **merge** na `main`
 8. Início automático da pipeline e explicação de cada etapa nos logs do CI e do CD
-9. Artefato publicado e resultados dos testes automatizados
-10. Alteração publicada na nuvem
-11. CRUD completo em **duas tabelas** (Locais e Compromissos), com `SELECT` no Oracle a cada operação
-12. Tarefa concluída no Boards, com os links de branch, commit e Pull Request
+9. Artefato publicado (`app.zip`) e resultados dos **47 testes**
+10. Recursos no Portal da Azure depois do deploy: Web App, Centro de Implantação, variáveis de ambiente, Application Insights e Plano do Serviço de Aplicativo
+11. Alteração publicada na nuvem: Swagger com o título `GaroAvisa API — GS DevOps`
+12. CRUD completo em **duas tabelas** (Locais e Compromissos), com antes e depois no Swagger e `SELECT` no Oracle a cada operação
+13. Tarefa concluída no Boards, com os links de branch, commit e Pull Request, e o histórico de commits na `main`
 
 </details>
 
@@ -517,24 +522,24 @@ Com a `main` protegida, toda alteração no código segue este caminho:
 > informar o token em **Authorize**.
 >
 > Cada operação é conferida **antes e depois direto no Oracle** (VS Code +
-> extensão Oracle SQL Developer), sempre com o mesmo `SELECT` de cada tabela.
+> extensão Oracle SQL Developer), sempre com o mesmo `SELECT` de cada tabela, filtrado pelo usuário do teste.
 >
 > **Ordem:** o compromisso depende do local (`localId`), então o local é
 > criado primeiro. Na exclusão, o compromisso é excluído antes do local.
 
 **SELECTs usados em todas as etapas**
 ```sql
-SELECT ID, ID_USUARIO, ETIQUETA, NOME, PRINCIPAL, RECEBER_ALERTAS FROM T_GS_LOCAL;
-SELECT ID, ID_LOCAL, NOME, DT_COMPROMISSO FROM T_GS_COMPROMISSO;
+SELECT L.ID, L.ID_USUARIO, L.ETIQUETA, L.NOME, L.PRINCIPAL, L.RECEBER_ALERTAS FROM T_GS_LOCAL L JOIN T_GS_USUARIO U ON U.ID = L.ID_USUARIO WHERE U.EMAIL = 'rafael@garoavisa.com';
+SELECT C.ID, C.ID_LOCAL, C.NOME, C.DT_COMPROMISSO FROM T_GS_COMPROMISSO C JOIN T_GS_LOCAL L ON L.ID = C.ID_LOCAL JOIN T_GS_USUARIO U ON U.ID = L.ID_USUARIO WHERE U.EMAIL = 'rafael@garoavisa.com';
 ```
 
 | Etapa | Resultado esperado do SELECT |
 |---|---|
 | Antes do CREATE | Nenhuma linha nas duas tabelas |
-| Depois do CREATE do local | `T_GS_LOCAL`: 1 linha, Casa · Tatuapé |
-| Depois do UPDATE do local | `T_GS_LOCAL`: Casa da Liana · RECEBER_ALERTAS = 0 |
-| Depois do CREATE do compromisso | `T_GS_COMPROMISSO`: 1 linha, Consulta médica · 22/11/2026 09:00 |
-| Depois do UPDATE do compromisso | `T_GS_COMPROMISSO`: Consulta médica (remarcada) · 23/11/2026 15:00 |
+| Depois do CREATE do local | `T_GS_LOCAL`: 1 linha, Faculdade · Aclimação |
+| Depois do UPDATE do local | `T_GS_LOCAL`: Faculdade (noite) · RECEBER_ALERTAS = 0 |
+| Depois do CREATE do compromisso | `T_GS_COMPROMISSO`: 1 linha, Apresentação da Global Solution · 24/11/2026 19:00 |
+| Depois do UPDATE do compromisso | `T_GS_COMPROMISSO`: Apresentação da Global Solution (remarcada) · 25/11/2026 19:30 |
 | Depois do DELETE do compromisso | `T_GS_COMPROMISSO`: nenhuma linha |
 | Depois do DELETE do local | `T_GS_LOCAL`: nenhuma linha |
 
@@ -543,8 +548,8 @@ SELECT ID, ID_LOCAL, NOME, DT_COMPROMISSO FROM T_GS_COMPROMISSO;
 **Criar conta** — `POST /api/Auth/cadastro`
 ```json
 {
-  "nome": "Liana",
-  "email": "liana@garoavisa.com",
+  "nome": "Rafael",
+  "email": "rafael@garoavisa.com",
   "senha": "123456"
 }
 ```
@@ -552,23 +557,29 @@ SELECT ID, ID_LOCAL, NOME, DT_COMPROMISSO FROM T_GS_COMPROMISSO;
 **Login** — `POST /api/Auth/login`
 ```json
 {
-  "email": "liana@garoavisa.com",
+  "email": "rafael@garoavisa.com",
   "senha": "123456"
 }
 ```
 Copie o `token` da resposta, clique em **Authorize**, cole o token e confirme.
+
+**Conferir a conta no banco** — antes e depois do cadastro
+```sql
+SELECT ID, NOME, EMAIL, TIPO, SENHA_HASH FROM T_GS_USUARIO ORDER BY ID;
+```
+Antes do cadastro, o Rafael não aparece. Depois, ele aparece na última linha, com o `ID` dele e a senha guardada como hash (nunca em texto).
 
 ### Tabela T_GS_LOCAL — `/api/Locais`
 
 **CREATE** — `POST /api/Locais` (resposta `201`; anote o `id`)
 ```json
 {
-  "etiqueta": "Casa",
-  "nome": "Tatuapé",
+  "etiqueta": "Faculdade",
+  "nome": "Aclimação",
   "estado": "São Paulo",
   "pais": "Brasil",
-  "latitude": -23.53729,
-  "longitude": -46.5666,
+  "latitude": -23.5717,
+  "longitude": -46.6295,
   "fuso": "America/Sao_Paulo",
   "principal": true,
   "receberAlertas": true
@@ -580,37 +591,37 @@ Copie o `token` da resposta, clique em **Authorize**, cole o token e confirme.
 **UPDATE** — `PUT /api/Locais/{id}` (resposta `200`)
 ```json
 {
-  "etiqueta": "Casa da Liana",
+  "etiqueta": "Faculdade (noite)",
   "principal": true,
   "receberAlertas": false
 }
 ```
 
-**DELETE** — `DELETE /api/Locais/{id}` (resposta `204`; exclui também os compromissos do local)
+**DELETE** — `DELETE /api/Locais/{id}` (resposta `200`, com a mensagem "Local excluído com sucesso.")
 
 ### Tabela T_GS_COMPROMISSO — `/api/Compromissos`
 
-**CREATE** — `POST /api/Compromissos` (resposta `201`; use o `id` do local e uma data futura)
+**CREATE** — `POST /api/Compromissos` (resposta `201`; troque o `localId` pelo `id` do local criado e use uma data futura)
 ```json
 {
   "localId": 1,
-  "nome": "Consulta médica",
-  "dataHora": "2026-11-22T09:00:00"
+  "nome": "Apresentação da Global Solution",
+  "dataHora": "2026-11-24T19:00:00"
 }
 ```
 
 **READ** — `GET /api/Compromissos` (lista) e `GET /api/Compromissos/{id}` (um compromisso), resposta `200`
 
-**UPDATE** — `PUT /api/Compromissos/{id}` (resposta `200`)
+**UPDATE** — `PUT /api/Compromissos/{id}` (resposta `200`; mesmo `localId` do CREATE)
 ```json
 {
   "localId": 1,
-  "nome": "Consulta médica (remarcada)",
-  "dataHora": "2026-11-23T15:00:00"
+  "nome": "Apresentação da Global Solution (remarcada)",
+  "dataHora": "2026-11-25T19:30:00"
 }
 ```
 
-**DELETE** — `DELETE /api/Compromissos/{id}` (resposta `204`)
+**DELETE** — `DELETE /api/Compromissos/{id}` (resposta `200`, com a mensagem de exclusão)
 
 ---
 
